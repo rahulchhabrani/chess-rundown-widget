@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="60">
+<title>Chess Stream Overlay - rahul</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 10px;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .border-wrap {
+    padding: 1.5px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #00e5ff, #a855f7);
+    box-shadow: 0 0 18px rgba(0,229,255,0.12), 0 0 32px rgba(168,85,247,0.1);
+  }
+
+  .overlay {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #0a0a0f;
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .panel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    height: 44px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    white-space: nowrap;
+  }
+
+  .panel-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+  }
+
+  .panel-value {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    min-width: 16px;
+    text-align: center;
+  }
+
+  .win  .panel-label { color: rgba(74,222,128,0.6); }
+  .win  .panel-value { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.2); }
+
+  .loss .panel-label { color: rgba(248,113,113,0.6); }
+  .loss .panel-value { color: #f87171; text-shadow: 0 0 8px rgba(248,113,113,0.2); }
+
+  .draw .panel-label { color: rgba(255,255,255,0.2); }
+  .draw .panel-value { color: rgba(255,255,255,0.35); }
+
+  .elo-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    height: 44px;
+    gap: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .elo-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #00e5ff, #a855f7);
+    box-shadow: 0 0 6px rgba(168,85,247,0.7), 0 0 2px rgba(0,229,255,0.4);
+    transition: width 1.2s ease;
+  }
+
+  .elo-title {
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.65);
+  }
+
+  .elo-nums {
+    display: flex;
+    align-items: baseline;
+    gap: 1px;
+    line-height: 1;
+  }
+
+  .elo-current {
+    font-size: 20px;
+    font-weight: 900;
+    color: #00e5ff;
+    text-shadow: 0 0 10px rgba(0,229,255,0.25);
+    letter-spacing: -0.5px;
+  }
+
+  .elo-sep, .elo-goal {
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.2);
+  }
+
+  .mode-bar {
+    position: fixed;
+    bottom: 8px; right: 8px;
+    display: flex;
+    gap: 4px;
+  }
+
+  .mode-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 4px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn:hover, .mode-btn.active {
+    color: #00e5ff;
+    border-color: rgba(0,229,255,0.4);
+    background: rgba(0,229,255,0.06);
+  }
+
+  .live-dot {
+    position: fixed;
+    top: 6px; right: 8px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 4px rgba(74,222,128,0.6);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
+</head>
+<body>
+
+<div class="live-dot" id="liveDot"></div>
+
+<div class="border-wrap">
+  <div class="overlay">
+    <div class="panel win">
+      <span class="panel-label">Win</span>
+      <span class="panel-value" id="wins">0</span>
+    </div>
+    <div class="panel loss">
+      <span class="panel-label">Loss</span>
+      <span class="panel-value" id="losses">0</span>
+    </div>
+    <div class="panel draw">
+      <span class="panel-label">Draw</span>
+      <span class="panel-value" id="draws">0</span>
+    </div>
+    <div class="elo-panel">
+      <div class="elo-bar" id="eloBar" style="width:0%"></div>
+      <div class="elo-title">Road to 1000</div>
+      <div class="elo-nums">
+        <span class="elo-current" id="currentElo">—</span>
+        <span class="elo-sep"> ➜ </span>
+        <span class="elo-goal">1000</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mode-bar">
+  <button class="mode-btn" id="btn-rapid"  onclick="setMode('rapid')">Rapid</button>
+  <button class="mode-btn" id="btn-blitz"  onclick="setMode('blitz')">Blitz</button>
+  <button class="mode-btn" id="btn-bullet" onclick="setMode('bullet')">Bullet</button>
+  <button class="mode-btn" id="btn-daily"  onclick="setMode('daily')">Daily</button>
+</div>
+
+<script>
+const USERNAME='rahul',GOAL=1000;
+const DRAW_RESULTS=['agreed','repetition','stalemate','insufficient','timevsinsufficient','50move'];
+let mode=localStorage.getItem('chess_overlay_mode')||'rapid';
+function setMode(m){mode=m;localStorage.setItem('chess_overlay_mode',m);applyActiveBtn();fetchData();}
+function applyActiveBtn(){['rapid','blitz','bullet','daily'].forEach(function(m){document.getElementById('btn-'+m).classList.toggle('active',m===mode);});}
+function isToday(ts){var d=new Date(ts*1000),t=new Date();return d.getFullYear()===t.getFullYear()&&d.getMonth()===t.getMonth()&&d.getDate()===t.getDate();}
+function getColor(g){return g.white.username.toLowerCase()===USERNAME.toLowerCase()?'white':'black';}
+function getResult(g){var r=getColor(g)==='white'?g.white.result:g.black.result;if(r==='win')return 'win';if(DRAW_RESULTS.indexOf(r)>-1)return 'draw';return 'loss';}
+async function loadRating(){try{var res=await fetch('https://api.chess.com/pub/player/'+USERNAME+'/stats');if(!res.ok)return;var data=await res.json();var key=mode==='daily'?'chess_daily':'chess_'+mode;var elo=data[key]&&data[key].last&&data[key].last.rating?data[key].last.rating:null;if(elo){document.getElementById('currentElo').textContent=elo;document.getElementById('eloBar').style.width=Math.min(100,(elo/GOAL)*100)+'%';}}catch(e){}}
+async function loadGames(){var dot=document.getElementById('liveDot');dot.style.background='#f59e0b';dot.style.boxShadow='0 0 4px rgba(245,158,11,0.6)';try{var now=new Date();var res=await fetch('https://api.chess.com/pub/player/'+USERNAME+'/games/'+now.getFullYear()+'/'+String(now.getMonth()+1).padStart(2,'0'));if(!res.ok)throw new Error();var games=(await res.json()).games||[];var w=0,l=0,d=0;for(var i=0;i<games.length;i++){var g=games[i];if(g.time_class!==mode||!isToday(g.end_time))continue;var r=getResult(g);if(r==='win')w++;else if(r==='loss')l++;else d++;}document.getElementById('wins').textContent=w;document.getElementById('losses').textContent=l;document.getElementById('draws').textContent=d;dot.style.background='#4ade80';dot.style.boxShadow='0 0 4px rgba(74,222,128,0.6)';}catch(e){dot.style.background='#f87171';dot.style.boxShadow='0 0 4px rgba(248,113,113,0.6)';}}
+async function init(){await loadRating();await loadGames();}
+applyActiveBtn();
+init();
+setInterval(loadGames,60000);
+setInterval(loadRating,120000);
+</script>
+</body>
+</html>
