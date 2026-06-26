@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="60">
+<title>RahulGambit – Blitz Widget</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .border-wrap {
+    width: 490px;
+    height: 330px;
+    padding: 2px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #00e5ff, #a855f7);
+    flex-shrink: 0;
+  }
+
+  .widget {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0f;
+    border-radius: 10px;
+    padding: 11px 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .row-header  { margin-bottom: 6px; }
+  .row-road    { margin-bottom: 6px; }
+  .row-stats   { margin-bottom: auto; }
+  .row-bottom  { margin-top: 8px; }
+
+  /* ── Row 1: Title + ELO ── */
+  .row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .header-left { display: flex; flex-direction: column; gap: 1px; }
+
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 17px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.3px;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    background: #4ade80;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 6px;
+    box-shadow: 0 0 4px rgba(74,222,128,0.6);
+    animation: livepulse 2s ease-in-out infinite;
+    vertical-align: middle;
+  }
+
+  @keyframes livepulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  .games-played {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.32);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding-left: 26px;
+  }
+
+  .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+
+  .elo-number {
+    font-size: 20px;
+    font-weight: 900;
+    color: #00e5ff;
+    line-height: 1;
+    text-shadow: 0 0 8px rgba(0,229,255,0.2);
+    letter-spacing: -0.5px;
+  }
+
+  .elo-today {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+
+  .elo-today.pos { color: #4ade80; }
+  .elo-today.neg { color: #f87171; }
+  .elo-today.neu { color: rgba(255,255,255,0.25); }
+
+  /* ── Row 2: Progress bar ── */
+  .row-road { display: flex; flex-direction: column; gap: 4px; }
+
+  .road-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .road-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.65);
+    text-transform: uppercase;
+  }
+
+  .road-fraction {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.28);
+  }
+
+  .road-fraction b { color: #00e5ff; font-size: 13px; }
+
+  .progress-track {
+    height: 15px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 99px;
+    overflow: visible;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #00e5ff, #a855f7);
+    box-shadow: 0 0 12px rgba(168,85,247,0.7), 0 0 4px rgba(0,229,255,0.4);
+    transition: width 1.2s ease;
+    min-width: 4px;
+  }
+
+  /* ── Row 3: Stats ── */
+  .row-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    text-align: center;
+    flex: 1;
+    align-items: center;
+  }
+
+  .stat + .stat { border-left: none; }
+
+  .stat-num {
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -3px;
+  }
+
+  .stat.wins   .stat-num { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.15); }
+  .stat.losses .stat-num { color: #f87171; text-shadow: 0 0 8px rgba(248,113,113,0.15); }
+  .stat.draws  .stat-num { color: rgba(255,255,255,0.32); }
+
+  .stat-lbl {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .stat.wins   .stat-lbl { color: rgba(74,222,128,0.55); }
+  .stat.losses .stat-lbl { color: rgba(248,113,113,0.55); }
+  .stat.draws  .stat-lbl { color: rgba(255,255,255,0.18); }
+
+  /* ── Row 4: Bottom cards ── */
+  .row-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .bottom-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    padding: 11px 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-icon { font-size: 20px; flex-shrink: 0; }
+
+  .card-body { display: flex; flex-direction: column; gap: 0px; }
+
+  .card-label {
+    font-size: 7px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.22);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .card-value {
+    font-size: 17px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+
+  .card-sub {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .c-green { color: #4ade80; }
+  .c-red   { color: #f87171; }
+  .c-grey  { color: rgba(255,255,255,0.25); }
+  .c-cyan  { color: #00e5ff; }
+
+  .loading {
+    color: rgba(255,255,255,0.18);
+    font-size: 9px;
+    letter-spacing: 1px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:.15} 50%{opacity:.6} }
+</style>
+</head>
+<body>
+<div class="border-wrap">
+  <div class="widget">
+
+    <!-- Header -->
+    <div class="row-header">
+      <div class="header-left">
+        <div class="title"><span>⚡</span> TODAY'S RUN <span class="live-dot"></span></div>
+        <div class="games-played" id="gamesPlayed">— GAMES PLAYED</div>
+      </div>
+      <div class="header-right">
+        <div class="elo-number" id="eloNum">— ELO</div>
+        <div class="elo-today neu" id="eloToday">▲ +0 TODAY</div>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="row-road">
+      <div class="road-meta">
+        <span class="road-label">Road to 1000</span>
+        <span class="road-fraction"><b id="eloFrac">—</b> ➜ 1000</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row-stats">
+      <div class="stat wins">
+        <div class="stat-num" id="wins">—</div>
+        <div class="stat-lbl">Wins</div>
+      </div>
+      <div class="stat losses">
+        <div class="stat-num" id="losses">—</div>
+        <div class="stat-lbl">Loss</div>
+      </div>
+      <div class="stat draws">
+        <div class="stat-num" id="draws">—</div>
+        <div class="stat-lbl">Draw</div>
+      </div>
+    </div>
+
+    <!-- Bottom cards -->
+    <div class="row-bottom">
+      <!-- Streak -->
+      <div class="bottom-card">
+        <span class="card-icon" id="streakIcon">🔥</span>
+        <div class="card-body">
+          <div class="card-label">Current Streak</div>
+          <div class="card-value" id="streakVal">—</div>
+          <div class="card-sub c-grey" id="streakSub">NO GAMES</div>
+        </div>
+      </div>
+      <!-- Last Game -->
+      <div class="bottom-card" id="lastCard">
+        <span class="card-icon">🏆</span>
+        <div class="card-body">
+          <div class="card-label">Last</div>
+          <div class="loading">LOADING...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const USERNAME = 'rahul';
+const GOAL_ELO = 1000;
+const DRAW_RESULTS = ['agreed','repetition','stalemate','insufficient','timevsinsufficient','50move'];
+const WIN_RESULTS  = ['win'];
+
+let currentRating = null;
+
+function getColor(g) {
+  return g.white.username.toLowerCase() === USERNAME.toLowerCase() ? 'white' : 'black';
+}
+function getMyRating(g) {
+  return getColor(g) === 'white' ? g.white.rating : g.black.rating;
+}
+function getResult(g) {
+  const r = getColor(g) === 'white' ? g.white.result : g.black.result;
+  if (WIN_RESULTS.includes(r)) return 'win';
+  if (DRAW_RESULTS.includes(r)) return 'draw';
+  return 'loss';
+}
+function isToday(ts) {
+  const d = new Date(ts * 1000), t = new Date();
+  return d.getFullYear()===t.getFullYear() && d.getMonth()===t.getMonth() && d.getDate()===t.getDate();
+}
+function calcStreak(games) {
+  if (!games.length) return { count: 0, type: 'none' };
+  const last = getResult(games[games.length - 1]);
+  let count = 0;
+  for (let i = games.length - 1; i >= 0; i--) {
+    if (getResult(games[i]) === last) count++; else break;
+  }
+  return { count, type: last };
+}
+
+function renderStats(allGames) {
+  const today = allGames.filter(g => isToday(g.end_time) && g.time_class === 'blitz');
+  let w=0, l=0, d=0;
+  today.forEach(g => {
+    const r = getResult(g);
+    if (r==='win') w++; else if (r==='loss') l++; else d++;
+  });
+
+  document.getElementById('wins').textContent   = w;
+  document.getElementById('losses').textContent = l;
+  document.getElementById('draws').textContent  = d;
+  document.getElementById('gamesPlayed').textContent = `${today.length} GAME${today.length !== 1 ? 'S' : ''}`;
+
+  // ELO change today: blitz current rating vs entry rating of first blitz game today
+  const todayEl = document.getElementById('eloToday');
+  if (today.length > 0 && currentRating !== null) {
+    const startRating = getMyRating(today[0]);
+    const delta = currentRating - startRating;
+    if (delta > 0)      { todayEl.textContent = `▲ +${delta} TODAY`; todayEl.className = 'elo-today pos'; }
+    else if (delta < 0) { todayEl.textContent = `▼ ${delta} TODAY`;  todayEl.className = 'elo-today neg'; }
+    else                { todayEl.textContent = `— 0 TODAY`;          todayEl.className = 'elo-today neu'; }
+  }
+
+  // Streak
+  const { count, type } = calcStreak(today);
+  const iconEl = document.getElementById('streakIcon');
+  const valEl  = document.getElementById('streakVal');
+  const subEl  = document.getElementById('streakSub');
+
+  if (!count) {
+    iconEl.textContent = '🔥'; valEl.textContent = '—';
+    subEl.textContent = 'NO GAMES'; subEl.className = 'card-sub c-grey';
+  } else if (type === 'win') {
+    iconEl.textContent = '🔥'; valEl.textContent = count;
+    subEl.textContent = 'WIN STREAK'; subEl.className = 'card-sub c-green';
+  } else if (type === 'loss') {
+    iconEl.textContent = '💀'; valEl.textContent = count;
+    subEl.textContent = 'LOSS STREAK'; subEl.className = 'card-sub c-red';
+  } else {
+    iconEl.textContent = '🤝'; valEl.textContent = count;
+    subEl.textContent = 'DRAW STREAK'; subEl.className = 'card-sub c-grey';
+  }
+
+  // Last game
+  const card = document.getElementById('lastCard');
+  if (!today.length) {
+    card.innerHTML = `<span class="card-icon">🏆</span><div class="card-body"><div class="card-label">Last Game</div><div class="card-value c-grey" style="font-size:13px">No games</div></div>`;
+    return;
+  }
+
+  const last   = today[today.length - 1];
+  const result = getResult(last);
+  const icon   = result==='win' ? '🏆' : result==='loss' ? '💔' : '🤝';
+  const lbl    = result==='win' ? 'WIN' : result==='loss' ? 'LOSS' : 'DRAW';
+  const cls    = result==='win' ? 'c-green' : result==='loss' ? 'c-red' : 'c-grey';
+
+  let eloSuffix = '';
+  if (currentRating !== null) {
+    const delta = currentRating - getMyRating(last);
+    if (delta > 0)      eloSuffix = ` <span style="font-size:16px;color:#4ade80">+${delta}</span>`;
+    else if (delta < 0) eloSuffix = ` <span style="font-size:16px;color:#f87171">${delta}</span>`;
+  }
+
+  card.innerHTML = `
+    <span class="card-icon">${icon}</span>
+    <div class="card-body">
+      <div class="card-label">Last Game</div>
+      <div class="card-value ${cls}" style="font-size:20px">${lbl}${eloSuffix}</div>
+    </div>`;
+}
+
+async function loadRating() {
+  try {
+    const res  = await fetch(`https://api.chess.com/pub/player/${USERNAME}/stats`);
+    if (!res.ok) return;
+    const data = await res.json();
+    currentRating = data?.chess_blitz?.last?.rating || null;
+    if (currentRating !== null) {
+      document.getElementById('eloNum').textContent  = `${currentRating} ELO`;
+      document.getElementById('eloFrac').textContent = currentRating;
+      document.getElementById('progressFill').style.width =
+        Math.min(100, (currentRating / GOAL_ELO) * 100) + '%';
+    }
+  } catch(e) {}
+}
+
+async function loadGames() {
+  const now   = new Date();
+  const year  = now.getFullYear();
+  const month = String(now.getMonth()+1).padStart(2,'0');
+  try {
+    const res = await fetch(`https://api.chess.com/pub/player/${USERNAME}/games/${year}/${month}`);
+    if (!res.ok) throw new Error();
+    const games = (await res.json()).games || [];
+    renderStats(games);
+  } catch(e) {}
+}
+
+async function init() { await loadRating(); await loadGames(); }
+init();
+setInterval(loadGames,  60000);
+setInterval(loadRating, 120000);
+</script>
+</body>
+</html>
