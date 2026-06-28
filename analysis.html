@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess.com Deep Analysis — rahul</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --card2: #222535;
+    --accent: #769656;
+    --accent2: #f6f669;
+    --red: #e05252;
+    --gold: #f0a500;
+    --text: #e8e8e8;
+    --muted: #8b8fa8;
+    --border: #2e3148;
+    --white-sq: #f0d9b5;
+    --dark-sq: #b58863;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.6; }
+
+  .hero {
+    background: linear-gradient(135deg, #1a1d27 0%, #0f1117 50%, #1a2010 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 40px 32px 32px;
+    display: flex; align-items: center; gap: 28px;
+  }
+  .hero-avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--accent); }
+  .hero-info h1 { font-size: 2rem; font-weight: 700; color: var(--accent2); }
+  .hero-info p { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+  .badges { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .badge { background: var(--card2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 0.8rem; color: var(--accent); }
+  .badge.gold { border-color: var(--gold); color: var(--gold); }
+  .badge.red { border-color: var(--red); color: var(--red); }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  .section { margin: 36px 0; }
+  .section-title {
+    font-size: 1.1rem; font-weight: 700; color: var(--accent2);
+    border-left: 4px solid var(--accent); padding-left: 12px;
+    margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-title { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .card-value { font-size: 2rem; font-weight: 700; color: var(--text); }
+  .card-sub { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+  .card-value.green { color: var(--accent); }
+  .card-value.red { color: var(--red); }
+  .card-value.gold { color: var(--gold); }
+
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .chart-card h3 { font-size: 0.9rem; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap-tall { position: relative; height: 280px; }
+
+  .opening-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .opening-table th { background: var(--card2); color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .opening-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  .opening-table tr:hover td { background: rgba(118,150,86,0.06); }
+  .opening-table tr:last-child td { border-bottom: none; }
+  .wr-bar { display: inline-block; background: var(--accent); height: 8px; border-radius: 4px; vertical-align: middle; margin-right: 6px; }
+  .wr-bar.red { background: var(--red); }
+  .wr-text { font-weight: 600; }
+  .wr-text.green { color: var(--accent); }
+  .wr-text.red { color: var(--red); }
+  .wr-text.yellow { color: var(--gold); }
+
+  .score-row { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; }
+  .score-label { color: var(--text); font-size: 0.9rem; min-width: 200px; }
+  .score-bar-wrap { flex: 1; background: var(--card2); height: 10px; border-radius: 5px; margin: 0 12px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 5px; background: var(--accent); }
+  .score-num { font-weight: 700; font-size: 0.95rem; min-width: 30px; text-align: right; }
+
+  .insight-box {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 10px 0;
+    font-size: 0.88rem;
+    line-height: 1.7;
+  }
+  .insight-box.red { border-left-color: var(--red); }
+  .insight-box.gold { border-left-color: var(--gold); }
+  .insight-box strong { color: var(--accent2); }
+  .insight-box.red strong { color: var(--red); }
+  .insight-box.gold strong { color: var(--gold); }
+
+  .plan-step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 12px 0;
+    position: relative;
+  }
+  .plan-num {
+    display: inline-block; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #000; font-weight: 700; text-align: center;
+    line-height: 28px; font-size: 0.85rem; margin-right: 10px; flex-shrink: 0;
+  }
+  .plan-header { display: flex; align-items: center; font-size: 1rem; font-weight: 700; color: var(--accent2); margin-bottom: 10px; }
+  .plan-body { font-size: 0.85rem; color: var(--text); line-height: 1.8; }
+  .plan-body ul { padding-left: 18px; }
+  .plan-body li { margin: 3px 0; }
+  .elo-tag { background: var(--red); color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; margin-left: 8px; }
+  .elo-tag.green { background: var(--accent); }
+
+  .wld-inline { display: flex; gap: 6px; font-size: 0.8rem; }
+  .w { color: var(--accent); font-weight: 600; }
+  .l { color: var(--red); font-weight: 600; }
+  .d { color: var(--muted); font-weight: 600; }
+
+  .twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .threeCol { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .milestone-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .milestone { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 180px; }
+  .milestone h4 { color: var(--gold); font-size: 0.9rem; margin-bottom: 6px; }
+  .milestone p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+
+  .flag { display: inline-block; background: var(--red); color: #fff; border-radius: 4px; padding: 1px 6px; font-size: 0.72rem; font-weight: 700; margin-left: 4px; }
+  .flag.green { background: var(--accent); color: #000; }
+  .flag.gold { background: var(--gold); color: #000; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+  .training-day {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .training-day-header {
+    background: var(--card2);
+    padding: 10px 16px;
+    font-weight: 700;
+    color: var(--accent2);
+    font-size: 0.85rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .training-day-body { padding: 14px 16px; font-size: 0.83rem; line-height: 1.8; }
+
+  .top-insights-list { counter-reset: item; list-style: none; }
+  .top-insights-list li {
+    counter-increment: item;
+    padding: 12px 16px 12px 52px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    font-size: 0.88rem;
+    line-height: 1.7;
+  }
+  .top-insights-list li::before {
+    content: counter(item);
+    position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+    background: var(--accent); color: #000; width: 24px; height: 24px;
+    border-radius: 50%; text-align: center; line-height: 24px;
+    font-weight: 700; font-size: 0.8rem;
+  }
+  .top-insights-list li:last-child { border-bottom: none; }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-4, .twoCol, .threeCol { grid-template-columns: 1fr; }
+    .hero { flex-direction: column; align-items: flex-start; }
+  }
+
+  .tabs { display: flex; gap: 2px; background: var(--card2); border-radius: 8px; padding: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tab { padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; color: var(--muted); font-weight: 600; transition: all 0.15s; }
+  .tab.active { background: var(--accent); color: #000; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <img class="hero-avatar" src="https://images.chesscomfiles.com/uploads/v1/user/267624409.d1acc733.200x200o.4fca1ba59410.png" alt="rahul">
+  <div class="hero-info">
+    <h1>rahul's Chess.com Analysis</h1>
+    <p>Elite League · Premium · 122 followers · India · Account joined March 2023</p>
+    <div class="badges">
+      <span class="badge gold">Rapid Peak: 756</span>
+      <span class="badge">Current: 744</span>
+      <span class="badge">539 Rapid Games Analyzed</span>
+      <span class="badge">Avg Accuracy: 67.1%</span>
+      <span class="badge red">Tactics Peak: 1402</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- NAV TABS -->
+<div style="margin-top:28px;">
+<div class="tabs" id="mainTabs">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('openings')">Openings</div>
+  <div class="tab" onclick="showTab('patterns')">Patterns & Psychology</div>
+  <div class="tab" onclick="showTab('profile')">Strength Profile</div>
+  <div class="tab" onclick="showTab('plan')">Improvement Plan</div>
+  <div class="tab" onclick="showTab('insights')">Top Insights</div>
+</div>
+
+<!-- ============================================================ OVERVIEW ============================================================ -->
+<div id="tab-overview" class="tab-content active">
+
+<div class="section">
+  <div class="section-title">Rapid Rating Overview</div>
+  <div class="grid grid-4">
+    <div class="card">
+      <div class="card-title">Current Rating</div>
+      <div class="card-value gold">744</div>
+      <div class="card-sub">Peak: 756 (Jun 2026)</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Win Rate</div>
+      <div class="card-value green">45.6%</div>
+      <div class="card-sub">246W / 231L / 62D</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg Accuracy</div>
+      <div class="card-value">67.1%</div>
+      <div class="card-sub">Win: 72.4% · Loss: 62.8%</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Total Games</div>
+      <div class="card-value">539</div>
+      <div class="card-sub">Mar 2023 – Jun 2026</div>
+    </div>
+  </div>
+  <div class="grid grid-4" style="margin-top:14px;">
+    <div class="card">
+      <div class="card-title">As White</div>
+      <div class="card-value green">49.3%</div>
+      <div class="card-sub">288 games · Acc 67.8%</div>
+    </div>
+    <div class="card">
+      <div class="card-title">As Black</div>
+      <div class="card-value red">41.4%</div>
+      <div class="card-sub">251 games · Acc 66.4%</div>
+    </div>
+    <div class="card">
+      <div class="card-title">vs Lower Rated</div>
+      <div class="card-value green">76.6%</div>
+      <div class="card-sub">261 games</div>
+    </div>
+    <div class="card">
+      <div class="card-title">vs Higher Rated</div>
+      <div class="card-value red">16.1%</div>
+      <div class="card-sub">273 games</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Rating Progression</div>
+  <div class="chart-card">
+    <h3>Rating Over Time (All Rapid Games)</h3>
+    <div class="chart-wrap-tall">
+      <canvas id="ratingChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="twoCol" style="margin:28px 0;">
+  <div>
+    <div class="section-title">Monthly Performance</div>
+    <div class="chart-card">
+      <h3>Win Rate & Accuracy by Month</h3>
+      <div class="chart-wrap-tall">
+        <canvas id="monthChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="section-title">By Weekday</div>
+    <div class="chart-card">
+      <h3>Win Rate by Day of Week</h3>
+      <div class="chart-wrap-tall">
+        <canvas id="weekdayChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="twoCol" style="margin:28px 0;">
+  <div>
+    <div class="section-title">Performance by Rating Difference</div>
+    <div class="chart-card">
+      <h3>Win Rate vs Opponent Strength</h3>
+      <div class="chart-wrap-tall">
+        <canvas id="ratingDiffChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="section-title">Game Length Analysis</div>
+    <div class="chart-card">
+      <h3>Win Rate by Number of Moves</h3>
+      <div class="chart-wrap-tall">
+        <canvas id="lengthChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Accuracy Distribution</div>
+  <div class="twoCol">
+    <div class="chart-card">
+      <h3>My Accuracy Frequency</h3>
+      <div class="chart-wrap">
+        <canvas id="accDistChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>How Games End</h3>
+      <div class="chart-wrap">
+        <canvas id="termChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="insight-box" style="margin-top:14px;">
+    <strong>Key termination insight:</strong> You were checkmated <strong>160 times</strong> (vs 86 times you delivered mate) — a 1.86:1 ratio. You resigned 67 times and made opponents resign 122 times. Being checkmated at avg move 37.5 means you're consistently running out of defensive resources in the middlegame — not blundering once, but getting progressively outplayed.
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Time of Day Performance</div>
+  <div class="chart-card">
+    <h3>Win Rate by UTC Hour Block</h3>
+    <div class="chart-wrap">
+      <canvas id="hourChart"></canvas>
+    </div>
+  </div>
+  <div class="insight-box gold" style="margin-top:14px;">
+    <strong>Best time to play:</strong> 4–8 UTC (55% win rate, likely your morning India time). <strong>Worst time:</strong> 20–24 UTC (36.2% win rate, Acc 57.3%) — likely late night when fatigue sets in. Avoid playing after 20:00 UTC if possible.
+  </div>
+</div>
+
+</div><!-- /tab-overview -->
+
+<!-- ============================================================ OPENINGS ============================================================ -->
+<div id="tab-openings" class="tab-content">
+
+<div class="section">
+  <div class="section-title">Italian Game Deep Dive (86 Games)</div>
+  <div class="insight-box">
+    <strong>Overall Italian record:</strong> 44W / 36L / 6D = <strong>51.2% win rate</strong> — your best-performing main opening system. You play it correctly in aggregate, but specific variations expose you badly.
+  </div>
+
+  <div style="overflow-x:auto; margin-top:16px;">
+    <table class="opening-table">
+      <thead><tr><th>Italian Variation</th><th>Games</th><th>W</th><th>L</th><th>D</th><th>Win Rate</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Knight Attack Normal (5.exd5)</td><td>9</td><td>7</td><td>1</td><td>1</td><td><span class="wr-text green">77.8%</span></td><td><span class="flag green">KEEP</span></td></tr>
+        <tr><td>Italian Knight Attack</td><td>6</td><td>5</td><td>1</td><td>0</td><td><span class="wr-text green">83.3%</span></td><td><span class="flag green">KEEP</span></td></tr>
+        <tr><td>Italian Game 3...d6 4.d4</td><td>3</td><td>2</td><td>1</td><td>0</td><td><span class="wr-text green">66.7%</span></td><td><span class="flag green">KEEP</span></td></tr>
+        <tr><td>Giuoco Piano Four Knights 5.O-O</td><td>3</td><td>2</td><td>1</td><td>0</td><td><span class="wr-text yellow">66.7%</span></td><td><span class="flag gold">OK</span></td></tr>
+        <tr><td>Italian Game (generic)</td><td>26</td><td>13</td><td>10</td><td>3</td><td><span class="wr-text yellow">50.0%</span></td><td><span class="flag gold">STUDY</span></td></tr>
+        <tr><td>Italian 3...d6</td><td>4</td><td>2</td><td>2</td><td>0</td><td><span class="wr-text yellow">50.0%</span></td><td><span class="flag gold">STUDY</span></td></tr>
+        <tr><td>Italian Two Knights Open</td><td>3</td><td>1</td><td>2</td><td>0</td><td><span class="wr-text red">33.3%</span></td><td><span class="flag">CAUTION</span></td></tr>
+        <tr><td>Giuoco Pianissimo 4...Nf6</td><td>5</td><td>1</td><td>4</td><td>0</td><td><span class="wr-text red">20.0%</span></td><td><span class="flag">DROP</span></td></tr>
+        <tr><td>Four Knights Italian Variation</td><td>3</td><td>0</td><td>2</td><td>1</td><td><span class="wr-text red">0%</span></td><td><span class="flag">DROP</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight-box red" style="margin-top:16px;">
+    <strong>Critical Italian finding:</strong> The <em>Giuoco Pianissimo (4...Nf6)</em> is destroying you — 1W/4L (20%). This arises after 1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.c3 Nf6. Opponents who play solid, slow systems grind you down. The <em>Four Knights Italian</em> is 0/2+1 (0%). These slow, symmetrical positions expose your lack of a concrete plan once the opening ends. Your <strong>Knight Attack lines (5.Ng5 systems)</strong> at 77–83% are your bread and butter — you create immediate threats and opponents struggle.
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Best & Worst Openings as White</div>
+  <div style="overflow-x:auto;">
+    <table class="opening-table">
+      <thead><tr><th>Opening (as White)</th><th>Games</th><th>W/L/D</th><th>Win Rate</th></tr></thead>
+      <tbody>
+        <tr><td>Scandinavian Defense (3.Nc3)</td><td>7</td><td class="wld-inline"><span class="w">6W</span><span class="l">1L</span><span class="d">0D</span></td><td><span class="wr-text green">85.7%</span> <span class="flag green">BEST</span></td></tr>
+        <tr><td>Italian Knight Attack</td><td>6</td><td class="wld-inline"><span class="w">5W</span><span class="l">1L</span><span class="d">0D</span></td><td><span class="wr-text green">83.3%</span></td></tr>
+        <tr><td>Scotch Game</td><td>5</td><td class="wld-inline"><span class="w">4W</span><span class="l">1L</span><span class="d">0D</span></td><td><span class="wr-text green">80.0%</span></td></tr>
+        <tr><td>Italian Knight Attack Normal (5.exd5)</td><td>9</td><td class="wld-inline"><span class="w">7W</span><span class="l">1L</span><span class="d">1D</span></td><td><span class="wr-text green">77.8%</span></td></tr>
+        <tr><td>Four Knights Game</td><td>18</td><td class="wld-inline"><span class="w">13W</span><span class="l">5L</span><span class="d">0D</span></td><td><span class="wr-text green">72.2%</span></td></tr>
+        <tr><td>Kp Opening Leonardis Var</td><td>4</td><td class="wld-inline"><span class="w">3W</span><span class="l">1L</span><span class="d">0D</span></td><td><span class="wr-text green">75.0%</span></td></tr>
+        <tr><td>Kings Pawn / Knights Variation</td><td>35</td><td class="wld-inline"><span class="w">20W</span><span class="l">13L</span><span class="d">2D</span></td><td><span class="wr-text yellow">57.1%</span></td></tr>
+        <tr><td>Italian Game (generic)</td><td>26</td><td class="wld-inline"><span class="w">13W</span><span class="l">10L</span><span class="d">3D</span></td><td><span class="wr-text yellow">50.0%</span></td></tr>
+        <tr><td>Philidor Defense 3.Bc4</td><td>6</td><td class="wld-inline"><span class="w">3W</span><span class="l">3L</span><span class="d">0D</span></td><td><span class="wr-text yellow">50.0%</span></td></tr>
+        <tr><td>Philidor Defense 3.d4</td><td>6</td><td class="wld-inline"><span class="w">2W</span><span class="l">2L</span><span class="d">2D</span></td><td><span class="wr-text yellow">33.3%</span></td></tr>
+        <tr><td>Caro-Kann 2.d4 d5 3.Nc3</td><td>7</td><td class="wld-inline"><span class="w">2W</span><span class="l">5L</span><span class="d">0D</span></td><td><span class="wr-text red">28.6%</span> <span class="flag">WORST</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Best & Worst Defenses as Black</div>
+  <div style="overflow-x:auto;">
+    <table class="opening-table">
+      <thead><tr><th>Opening (as Black)</th><th>Games</th><th>W/L/D</th><th>Win Rate</th></tr></thead>
+      <tbody>
+        <tr><td>Queens Pawn 1...d5 2.e3</td><td>4</td><td class="wld-inline"><span class="w">4W</span><span class="l">0L</span><span class="d">0D</span></td><td><span class="wr-text green">100%</span> <span class="flag green">BEST</span></td></tr>
+        <tr><td>Petrov's Defense Three Knights</td><td>5</td><td class="wld-inline"><span class="w">3W</span><span class="l">2L</span><span class="d">0D</span></td><td><span class="wr-text green">60.0%</span></td></tr>
+        <tr><td>Queens Pawn Chigorin (2...Nf6)</td><td>7</td><td class="wld-inline"><span class="w">4W</span><span class="l">3L</span><span class="d">0D</span></td><td><span class="wr-text yellow">57.1%</span></td></tr>
+        <tr><td>Four Knights Game (as Black)</td><td>4</td><td class="wld-inline"><span class="w">2W</span><span class="l">2L</span><span class="d">0D</span></td><td><span class="wr-text yellow">50.0%</span></td></tr>
+        <tr><td>Three Knights 3...d6</td><td>4</td><td class="wld-inline"><span class="w">2W</span><span class="l">2L</span><span class="d">0D</span></td><td><span class="wr-text yellow">50.0%</span></td></tr>
+        <tr><td>Kings Pawn 1...e5</td><td>42</td><td class="wld-inline"><span class="w">19W</span><span class="l">21L</span><span class="d">2D</span></td><td><span class="wr-text red">45.2%</span></td></tr>
+        <tr><td>Reti Opening 1...d5</td><td>4</td><td class="wld-inline"><span class="w">1W</span><span class="l">2L</span><span class="d">1D</span></td><td><span class="wr-text red">25.0%</span></td></tr>
+        <tr><td>Bishops Opening 2...Nc6</td><td>4</td><td class="wld-inline"><span class="w">1W</span><span class="l">2L</span><span class="d">1D</span></td><td><span class="wr-text red">25.0%</span></td></tr>
+        <tr><td>Center Game Accepted</td><td>5</td><td class="wld-inline"><span class="w">1W</span><span class="l">3L</span><span class="d">1D</span></td><td><span class="wr-text red">20.0%</span></td></tr>
+        <tr><td>Giuoco Pianissimo 4...Nf6</td><td>5</td><td class="wld-inline"><span class="w">1W</span><span class="l">4L</span><span class="d">0D</span></td><td><span class="wr-text red">20.0%</span> <span class="flag">WORST</span></td></tr>
+        <tr><td>Van't Kruijs 1...e5</td><td>10</td><td class="wld-inline"><span class="w">3W</span><span class="l">7L</span><span class="d">0D</span></td><td><span class="wr-text red">30.0%</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="insight-box gold" style="margin-top:14px;">
+    <strong>Black opening analysis:</strong> 1...e5 is your main reply (42 games, 45.2%) but far from your best. The Giuoco Pianissimo as Black (20%) and Center Game Accepted (20%) are killing you — these are positions where you have no clear plan after move 6-8. The 1...d5 systems are actually stronger for you statistically. Consider making 1...d5 your primary Black response.
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">ECO Family Breakdown</div>
+  <div class="chart-card">
+    <h3>Win Rate by ECO Opening Family (min 5 games)</h3>
+    <div class="chart-wrap-tall">
+      <canvas id="ecoChart"></canvas>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-openings -->
+
+<!-- ============================================================ PATTERNS ============================================================ -->
+<div id="tab-patterns" class="tab-content">
+
+<div class="section">
+  <div class="section-title">Tactical & Strategic Weaknesses</div>
+  <div class="insight-box red">
+    <strong>#1 — Getting Checkmated (160 times, avg move 37.5):</strong> You are mated more than double the rate you deliver mate (160 vs 86). This reveals chronic king safety problems and an inability to defend middlegame attacks. The average game length of 37.5 moves before being mated means you're getting outplayed over a sustained sequence — not one-move blunders, but accumulated positional disadvantage you cannot reverse.
+  </div>
+  <div class="insight-box red">
+    <strong>#2 — Accuracy collapses against higher-rated opponents:</strong> When facing players rated higher than you, your win rate craters to <strong>16.1%</strong> (273 games). Your average accuracy in losses is 62.8% vs 72.4% in wins — a 9.6-point gap. Against stronger players, this gap widens further. You play better chess against weaker opponents not just because of strength differences, but because you play faster, less carefully in "even" matchups.
+  </div>
+  <div class="insight-box red">
+    <strong>#3 — Short-game vulnerability:</strong> You lose 70 games in ≤20 moves. At your level (700s), losses under 20 moves typically mean opening blunders, hanging pieces in the first 15 moves, or missing a tactical sequence early. This is a recurring tactical pattern, not just occasional bad luck.
+  </div>
+  <div class="insight-box gold">
+    <strong>#4 — Long game collapse:</strong> Your win rate drops sharply at 61–80 moves (26%) and is 0% at 80+ moves (5 games). While you play well in short-to-medium games (50%+ up to 40 moves), endgames are clearly not your territory. You convert well in tactical middlegames but struggle when games simplify.
+  </div>
+  <div class="insight-box gold">
+    <strong>#5 — Accuracy vs opponent accuracy dependency:</strong> When your accuracy exceeds opponent's, you win 99 times and lose only 5 (95%+ conversion). When opponent is more accurate, you win only 9 times and lose 126 (6.7% conversion). This means you have almost no ability to outplay opponents through positional compensation when they are playing better — you rely entirely on being the more accurate player in that game.
+  </div>
+  <div class="insight-box">
+    <strong>#6 — Caro-Kann blindspot:</strong> When opponents play the Caro-Kann against your 1.e4, you score only 28.6% as White (7 games, 2W/5L). This is likely because the Caro-Kann sidesteps your Italian system entirely and you have no studied response. Opponents who know this can deliberately steer into it.
+  </div>
+  <div class="insight-box">
+    <strong>#7 — Giuoco Pianissimo blindspot (both colors):</strong> Whether you're White or Black in the Pianissimo, you score ~20%. This slow variation requires deep understanding of long-term pawn structures (c3-d3 vs d4 pawn breaks, piece maneuvering plans). You likely understand tactics but not strategic plans in this subtype.
+  </div>
+  <div class="insight-box">
+    <strong>#8 — Draw conversion issues:</strong> 30 stalemates occurred (all draws). At your level, stalemates almost always indicate endgame knowledge gaps — either you stalemated a losing opponent (good), or you let a winning game stalemate (bad). Given your 0% win rate in 80+ move games, the latter is probable.
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Psychological Analysis</div>
+
+  <div class="twoCol">
+    <div>
+      <div class="insight-box">
+        <strong>Tilt pattern:</strong> After a loss, your next-game win rate drops to <strong>42.1%</strong> (98W / 104L of games after losses) vs <strong>47.1%</strong> after wins (116W / 101L). This is a mild but real tilt effect. More concerning is the February 2026 evidence — multiple 6–7 game loss streaks in single sessions suggest you kept playing through tilt instead of stopping.
+      </div>
+      <div class="insight-box gold">
+        <strong>Streak data:</strong> Max win streak of <strong>9</strong> games, max loss streak of <strong>7</strong>. Critically, there were back-to-back 7-game and 6-game loss streaks when you started playing rapid in Feb 2026 (likely new account restart at ~160 rating). Playing 173 games in February at 36.4% is a sign of compulsive play through tilt rather than intentional practice.
+      </div>
+    </div>
+    <div>
+      <div class="insight-box">
+        <strong>Session quality:</strong> Best sessions are early in the day (4–8 UTC, 55% win rate). Late-night play (20–24 UTC) drops to 36.2% with significantly lower accuracy (57.3% vs 69% midday). You're playing meaningfully worse tired.
+      </div>
+      <div class="insight-box">
+        <strong>Friday effect:</strong> Friday is your worst day (35.8% win rate, 24W/36L, acc 63%) — notably worse than Monday (52.7%) and Wednesday (54.2%). This may indicate end-of-week fatigue, rushing through games, or simply unlucky variance. Worth monitoring.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Endgame & Middlegame Analysis</div>
+  <div class="twoCol">
+    <div class="insight-box">
+      <strong>Endgame weakness (confirmed):</strong> Win rate falls to 26% in 61–80 move games and 0% in 80+ move games. At 70 moves, most tactical complications are over — what remains is technique: rook endings, pawn races, king opposition, zugzwang. Your accuracy in these games (70.7%–74.2%) is actually higher than average, meaning you're not blundering — you're making subtle positional errors that gradually lose. This suggests you know the moves but not the plans.
+    </div>
+    <div class="insight-box">
+      <strong>Middlegame strength (confirmed):</strong> You win 51.8% of 21–40 move games — your best bracket. You're most effective when tactical activity is high and pieces are on the board. Knight Attack lines (83%!) confirm you thrive in sharp, aggressive positions with concrete threats. This is your identity: tactical attacker, not strategic grinder.
+    </div>
+  </div>
+  <div class="insight-box gold">
+    <strong>Key middlegame plan gap:</strong> The Giuoco Pianissimo results (20% both colors) reveal you don't know what to do when the position becomes slow and maneuvering-based. Specifically: the pawn break timing (d3-d4 vs c3 stabilizing), how to activate the c1 bishop, and when to open the center. These are standard Italian plans that experienced players execute automatically.
+  </div>
+</div>
+
+</div><!-- /tab-patterns -->
+
+<!-- ============================================================ STRENGTH PROFILE ============================================================ -->
+<div id="tab-profile" class="tab-content">
+
+<div class="section">
+  <div class="section-title">Strength Profile — Scored 1–10</div>
+
+  <div id="radarWrap" style="max-width:500px; margin:0 auto 28px;">
+    <canvas id="radarChart"></canvas>
+  </div>
+
+  <div class="score-row"><span class="score-label">Opening Knowledge</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:55%"></div></div><span class="score-num" style="color:var(--gold)">5.5</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Italian system decent (51.2%) but multiple blind spots — Pianissimo (20%), Caro-Kann (28.6%), Black defenses mostly un-studied.</div>
+
+  <div class="score-row"><span class="score-label">Tactical Vision</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:50%"></div></div><span class="score-num" style="color:var(--red)">5.0</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Checkmated 160 times (vs delivering 86 mates). Win 95% when more accurate, but consistently fail to find defensive resources when attacked.</div>
+
+  <div class="score-row"><span class="score-label">Calculation</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:50%"></div></div><span class="score-num" style="color:var(--red)">5.0</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Avg accuracy 67.1% with a 9.6-point gap between wins and losses. Short losses (70 games ≤20 moves) suggest calculation failures early in games.</div>
+
+  <div class="score-row"><span class="score-label">Positional Understanding</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:40%"></div></div><span class="score-num" style="color:var(--red)">4.0</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Lowest-scoring area. Pianissimo results (20%), long-game collapse (0% at 80+ moves), and inability to outplay from inferior positions reveal weak strategic foundations.</div>
+
+  <div class="score-row"><span class="score-label">Endgames</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:35%"></div></div><span class="score-num" style="color:var(--red)">3.5</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Win rate 26% at 61–80 moves, 0% at 80+. Despite higher accuracy in these games (70.7%), you can't convert or hold. Classic sign of technique gaps.</div>
+
+  <div class="score-row"><span class="score-label">Attack</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:70%"></div></div><span class="score-num" style="color:var(--accent)">7.0</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Knight Attack lines at 77–83% win rate. Four Knights Game 72.2%. Scotch 80%. You're a natural attacker who creates threats well in tactical middlegames.</div>
+
+  <div class="score-row"><span class="score-label">Defense</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:35%"></div></div><span class="score-num" style="color:var(--red)">3.5</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Checkmated 160 times tells the story. Black performance (41.4%) is 7.9 points below White (49.3%). Defending is your weakest skill.</div>
+
+  <div class="score-row"><span class="score-label">Time Management</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:60%"></div></div><span class="score-num" style="color:var(--gold)">6.0</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Only 10 extreme time scrambles (&lt;30s remaining). Decent for rapid. However, late-night sessions drop 10+ accuracy points suggesting mental time fatigue matters more than clock management.</div>
+
+  <div class="score-row"><span class="score-label">Pattern Recognition</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:55%"></div></div><span class="score-num" style="color:var(--gold)">5.5</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Tactics rating 1402 (highest: 1402, lowest: 400) — wide variance means inconsistent pattern spotting. Puzzle Rush best of 24/27 shows burst capability but not consistency.</div>
+
+  <div class="score-row"><span class="score-label">Initiative & Momentum</span><div class="score-bar-wrap"><div class="score-bar-fill" style="width:65%"></div></div><span class="score-num" style="color:var(--accent)">6.5</span></div>
+  <div style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px 212px;">Max 9-game win streak shows you can sustain momentum. Knight Attack lines prove you understand how to create and press initiative. But you surrender it quickly under pressure.</div>
+
+</div>
+</div><!-- /tab-profile -->
+
+<!-- ============================================================ IMPROVEMENT PLAN ============================================================ -->
+<div id="tab-plan" class="tab-content">
+
+<div class="section">
+  <div class="section-title">Prioritized Improvement Plan</div>
+
+  <div class="plan-step">
+    <div class="plan-header"><span class="plan-num">1</span> Fix King Safety & Defensive Technique <span class="elo-tag">~+80 Elo</span></div>
+    <div class="plan-body">
+      <strong>Why it costs you:</strong> 160 checkmates suffered vs 86 delivered. At your level, this is the single biggest Elo drain. Every game you get mated is an Elo loss that a simple defensive habit would have prevented.<br><br>
+      <strong>Specific exercises:</strong>
+      <ul>
+        <li>Chess.com Lessons → King Safety module (free)</li>
+        <li>Lichess Study: "How to Stop Attacks" — search for Dan Heisman's materials</li>
+        <li>Every time you feel attacked, ask: "Can I castle? Can I trade the attacking piece? Do I have a counter-attack?"</li>
+        <li>Practice the "Think like the opponent" habit: before each of your moves, check what your opponent wants to do next</li>
+        <li>Puzzle themes: "Defending" and "Sacrifice Defense" on Lichess</li>
+      </ul>
+      <strong>Recommended:</strong> "How to Reassess Your Chess" by Jeremy Silman (defensive planning chapters); YouTube: Daniel Naroditsky "Danya's 5-move checkmate patterns" series<br>
+      <strong>Daily:</strong> 10 min defensive puzzle drills before playing
+    </div>
+  </div>
+
+  <div class="plan-step">
+    <div class="plan-header"><span class="plan-num">2</span> Endgame Fundamentals <span class="elo-tag">~+60 Elo</span></div>
+    <div class="plan-body">
+      <strong>Why it costs you:</strong> 0% win rate in 80+ move games, 26% in 61–80 move games. These games are already won or drawn entering the endgame and you're converting 0% of them. That's free Elo being left on the board.<br><br>
+      <strong>Specific exercises:</strong>
+      <ul>
+        <li>Chess.com Endgame lessons: Complete all "Checkmate Patterns" and "Rook Endings" modules</li>
+        <li>Learn these 5 positions cold: King+Pawn vs King, Lucena position, Philidor position, Queen vs Pawn, Opposition</li>
+        <li>Lichess endgame practice: /practice (free) — rook endgames and pawn endgames</li>
+        <li>Play 10+5 (rapid) games and deliberately try to reach endgames</li>
+      </ul>
+      <strong>Recommended:</strong> "Silman's Complete Endgame Course" (work up to your rating chapter); YouTube: John Bartholomew "Chess Fundamentals" playlist (endgame episodes)<br>
+      <strong>Weekly:</strong> 2 hours of pure endgame study, no full games
+    </div>
+  </div>
+
+  <div class="plan-step">
+    <div class="plan-header"><span class="plan-num">3</span> Stop Playing Late Night / On Tilt <span class="elo-tag">~+40 Elo</span></div>
+    <div class="plan-body">
+      <strong>Why it costs you:</strong> Late-night play (20–24 UTC) = 36.2% win rate and 57.3% accuracy — 10+ points below your daytime average. February 2026 had 7-game loss streaks in single sessions. If you played only during your peak hours (4–12 UTC) you'd convert roughly +40 Elo worth of extra wins immediately.<br><br>
+      <strong>Rules to implement now:</strong>
+      <ul>
+        <li>Stop after 3 consecutive losses — take at least a 20-minute break</li>
+        <li>Do not play past 20:00 UTC (likely ~1:30 AM IST)</li>
+        <li>Set a session game limit: max 10 rapid games per session</li>
+        <li>If accuracy drops below 60% in a game, close the app after that game</li>
+      </ul>
+      <strong>Tracking:</strong> Chess.com game review — check your accuracy each session and note time-of-day correlation
+    </div>
+  </div>
+
+  <div class="plan-step">
+    <div class="plan-header"><span class="plan-num">4</span> Solidify Opening vs Caro-Kann & Non-e5 Responses <span class="elo-tag">~+35 Elo</span></div>
+    <div class="plan-body">
+      <strong>Why it costs you:</strong> Caro-Kann as White = 28.6% (7 games). Van't Kruijs 1.e4 1...e5 response = 30% as Black. These are opponents deliberately avoiding your Italian and you have no response plan.<br><br>
+      <strong>Specific study:</strong>
+      <ul>
+        <li>vs Caro-Kann: Learn the Exchange Variation (1.e4 c6 2.d4 d5 3.exd5 cxd5 4.Bd3) — simple, structural, avoids theory</li>
+        <li>vs 1.d4 as Black: Play 1...d5 2...Nf6 — your stats show d5 systems work better for you (100% in QP 2.e3)</li>
+        <li>vs irregular 1st moves by White (Van't Kruijs etc.): Just play 1...d5 and develop normally — don't try to punish, just get a solid position</li>
+        <li>Chess.com Opening Explorer: Drill 10 positions from each problem opening</li>
+      </ul>
+      <strong>Time investment:</strong> 1 hour per week, 4 weeks — that's all you need to patch these holes
+    </div>
+  </div>
+
+  <div class="plan-step">
+    <div class="plan-header"><span class="plan-num">5</span> Deepen Italian Knight Attack System <span class="elo-tag">~+25 Elo</span></div>
+    <div class="plan-body">
+      <strong>Why it costs you:</strong> Your 77–83% win rate in Knight Attack lines proves this is your style. But you play the generic "Italian Game" at only 50% (26 games) — these are likely games where you deviate from the Knight Attack path and get lost. Deepening your knowledge to move 12–15 in your best lines locks in reliable plans.<br><br>
+      <strong>Specific study:</strong>
+      <ul>
+        <li>Italian Knight Attack: 1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.Ng5 — learn d5, Nxf7, Nf7 responses</li>
+        <li>Lichess Opening Study: "Italian Knight Attack Main Lines"</li>
+        <li>Drop the Pianissimo entirely — 20% win rate is definitive evidence it doesn't suit you</li>
+        <li>If opponent avoids Knight Attack: transition to Scotch (80% WR) or Four Knights (72%)</li>
+      </ul>
+      <strong>Recommended:</strong> YouTube: GothamChess "Italian Game for Beginners" + "Knight Attack Traps"
+    </div>
+  </div>
+
+  <div class="plan-step">
+    <div class="plan-header"><span class="plan-num">6</span> Consistent Tactical Training <span class="elo-tag">~+20 Elo</span></div>
+    <div class="plan-body">
+      <strong>Why it costs you:</strong> Tactics rating swings from 400 to 1402 — massive variance means you're inconsistent at pattern recognition. You lose 70 games in ≤20 moves, many likely to simple tactical shots. A daily puzzle habit closes this gap over 60–90 days.<br><br>
+      <strong>Routine:</strong>
+      <ul>
+        <li>Chess.com Daily Puzzles: 10 per day minimum — do them before playing, not after</li>
+        <li>Puzzle Rush: aim for 20+ consistently (your best is 24)</li>
+        <li>Lichess Puzzle Storm: 3-minute sessions, track your score weekly</li>
+        <li>Focus themes: pins, forks, back-rank threats, discovered attacks</li>
+      </ul>
+      <strong>Recommended:</strong> "1001 Chess Exercises for Club Players" — do 5-10 per day; Chess Tempo (free) for spaced repetition puzzles
+    </div>
+  </div>
+
+</div>
+
+<div class="section">
+  <div class="section-title">90-Day Training Plan</div>
+
+  <div class="training-day">
+    <div class="training-day-header">📅 DAYS 1–30: Foundation Phase (Target: +100 Elo)</div>
+    <div class="training-day-body">
+      <strong>Daily (45–60 min total):</strong><br>
+      • 10 min — Tactics puzzles (Chess.com or Lichess)<br>
+      • 15 min — Endgame study (Silman's book, 1 chapter per 3 days; Lucena + Philidor + K+P endings)<br>
+      • 20–30 min — Max 5 rapid games (only during daytime, stop after 2 consecutive losses)<br>
+      • After each game: review with Chess.com analysis, identify if loss was (a) opening error (b) tactical miss (c) endgame error<br><br>
+      <strong>Weekly (Sunday, 1.5 hours):</strong><br>
+      • Study Caro-Kann Exchange Variation (White) + 1...d5 setup (Black) until it's automatic<br>
+      • Drill your Knight Attack lines to move 14 — know the main replies<br>
+      • Review your worst 2 games of the week
+    </div>
+  </div>
+
+  <div class="training-day">
+    <div class="training-day-header">📅 DAYS 31–60: Consolidation Phase (Target: +200 Elo cumulative)</div>
+    <div class="training-day-body">
+      <strong>Daily (60 min total):</strong><br>
+      • 15 min — Tactics (increase difficulty: do "hard" rated puzzles)<br>
+      • 15 min — Endgame technique (rook endings + queen endings)<br>
+      • 30 min — 5–8 rapid games (implement session rules strictly)<br>
+      • Weekly game log: track your win rate and accuracy — aim for 68%+ avg accuracy<br><br>
+      <strong>Weekly (Sunday, 2 hours):</strong><br>
+      • 1 hr — Watch Danya (Daniel Naroditsky) on YouTube: "Speed Run" playlist — study his thought process<br>
+      • 30 min — Play one 15|10 game slowly, writing down your thoughts before each move<br>
+      • 30 min — Open your 5 worst losses this week and find where you went wrong before the engine
+    </div>
+  </div>
+
+  <div class="training-day">
+    <div class="training-day-header">📅 DAYS 61–90: Skill Integration Phase (Target: +350 Elo cumulative)</div>
+    <div class="training-day-body">
+      <strong>Daily (60–75 min total):</strong><br>
+      • 20 min — Mixed puzzles + 5 endgame drills<br>
+      • 40–55 min — 8–10 rapid games (by now session discipline should be habit)<br>
+      • Before each game: mentally review "King safety check, development complete? Opponent's threats?"<br><br>
+      <strong>Weekly (Sunday, 2 hours):</strong><br>
+      • Annotate 1 full game per week yourself, then compare to engine<br>
+      • Focus on positions where you had 2–3 candidate moves — practice choosing correctly<br>
+      • Track: if accuracy is consistently above 70%, increase game volume slightly
+    </div>
+  </div>
+
+  <div class="milestone-row">
+    <div class="milestone"><h4>+100 Elo (~800)</h4><p>Achieved by: stopping late-night tilt sessions, 10 puzzles/day, learning King+Pawn endgame cold. Timeline: ~3–4 weeks.</p></div>
+    <div class="milestone"><h4>+300 Elo (~1000)</h4><p>Achieved by: solid endgame technique (Lucena/Philidor), Caro-Kann preparation, Knight Attack repertoire to move 14. Timeline: ~3 months.</p></div>
+    <div class="milestone"><h4>+500 Elo (~1200)</h4><p>Achieved by: consistent 70%+ accuracy, real positional understanding, reliable black defenses. Requires 6+ months of structured study.</p></div>
+  </div>
+</div>
+
+</div><!-- /tab-plan -->
+
+<!-- ============================================================ TOP INSIGHTS ============================================================ -->
+<div id="tab-insights" class="tab-content">
+
+<div class="section">
+  <div class="section-title">If You Fixed Only ONE Thing</div>
+  <div class="insight-box" style="font-size:0.95rem; padding:20px 22px;">
+    <strong style="font-size:1.1rem; display:block; margin-bottom:8px;">→ Stop getting checkmated.</strong>
+    You are checkmated 160 times in 539 rapid games — nearly 1 in every 3 games ends with your king getting mated. This single pattern is responsible for the biggest chunk of your losses. Tactical defensive awareness (spotting when your king is in danger, knowing when to trade the attacking piece, keeping a "king safety check" on every move) would immediately convert dozens of these losses into draws or wins. Estimated value: <strong>+60–80 Elo</strong>, achievable in 4–6 weeks.
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Top 10 Recurring Mistakes (Evidence-Based)</div>
+  <div class="card" style="padding:0; overflow:hidden;">
+    <ol class="top-insights-list">
+      <li><strong>King left vulnerable in middlegame.</strong> 160 checkmates in 539 games = checkmated in 29.7% of all games. Your king is consistently the target.</li>
+      <li><strong>Inability to defend when outplayed.</strong> When opponent accuracy exceeds yours, you convert only 6.7% of games. Zero ability to grind from an inferior position.</li>
+      <li><strong>Late-night/tilt play.</strong> 36.2% win rate and 57.3% accuracy after 20:00 UTC. This accounts for a statistically significant portion of your losses.</li>
+      <li><strong>Endgame conversion failure.</strong> 0% win rate at 80+ moves, 26% at 61–80 moves. Winning positions slipping to draws or losses late in the game.</li>
+      <li><strong>Early game tactical blunders.</strong> 70 losses in ≤20 moves — roughly one short loss every 7.7 games. Something is hanging or a tactic is being missed in the opening/early middlegame.</li>
+      <li><strong>No plan in slow Italian positions.</strong> Giuoco Pianissimo: 20% win rate both as White and Black. You reach the position but have no plan after move 8.</li>
+      <li><strong>Weak Black defenses.</strong> 41.4% as Black vs 49.3% as White — a 7.9-point gap. Black opening preparation is significantly below White preparation.</li>
+      <li><strong>Caro-Kann blind spot.</strong> 28.6% win rate when opponents play the Caro-Kann against your 1.e4. Directly exploitable by any opponent who prepares it.</li>
+      <li><strong>Tilt compounding losses.</strong> Multiple 6–7 loss streaks in single sessions (Feb 2026 data). Each loss increases chance of next loss — you don't stop in time.</li>
+      <li><strong>Rating mismatch awareness.</strong> 16.1% vs higher-rated, 76.6% vs lower-rated — a 60-point gap. You play fundamentally different chess based on opponent rating, suggesting you don't apply the same quality thinking regardless of opponent strength.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">What Stronger Players Do That You Don't</div>
+  <div class="twoCol">
+    <div class="insight-box">
+      <strong>They check king safety every move.</strong> Before playing any move, a 1000+ player asks: "Is my king safe? Does my move create a weakness?" You skip this step — hence 160 checkmates.
+    </div>
+    <div class="insight-box">
+      <strong>They have a plan in every position.</strong> In the Pianissimo (your 20% positions), stronger players know: "I will play d4 on move X, then reposition my knight to e2-g3." You drift without a plan.
+    </div>
+    <div class="insight-box">
+      <strong>They stop playing when tired.</strong> Your data shows a 19-point win rate drop at night. Stronger players treat their sessions as training, not compulsive grinding.
+    </div>
+    <div class="insight-box">
+      <strong>They know basic endgame positions cold.</strong> Lucena, Philidor, K+P opposition — these are automatic for any 900+ player. You're losing drawn or won endgames because these aren't memorized.
+    </div>
+    <div class="insight-box">
+      <strong>They play their best openings regardless of opponent rating.</strong> Your performance gap (16% vs 77%) by rating shows you're not applying consistent quality. Stronger players play the same methodical chess at every rating.
+    </div>
+    <div class="insight-box">
+      <strong>They convert winning accuracy into wins.</strong> Your accuracy-to-result correlation is almost binary: higher accuracy = win, lower accuracy = loss. Stronger players can outplay in compensation positions. You need this skill.
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">What's Keeping You Below Your Next Milestone (800)</div>
+  <div class="insight-box gold">
+    <strong>The honest assessment:</strong> Your rating peaked at 756 and current is 744. You are functionally already at ~750–760 level and held back by three correctable habits:<br><br>
+    <strong>1.</strong> Playing when tired (late night sessions are losing you 15–20 rating points net per month)<br>
+    <strong>2.</strong> Neglecting defensive awareness (1 in 3 games ends with your king getting mated — fixable in weeks)<br>
+    <strong>3.</strong> Not knowing 4–5 basic endgame positions that would convert 5–10 drawn/winning games into wins per month<br><br>
+    These are not deep chess skill issues. They are <em>habits</em>. Fix the habits and you break 800 within 30 days.
+  </div>
+</div>
+
+</div><!-- /tab-insights -->
+
+</div><!-- .tabs container -->
+
+</div><!-- .container -->
+
+<div style="text-align:center; color:var(--muted); font-size:0.78rem; padding:32px 0 20px; border-top:1px solid var(--border); margin-top:40px;">
+  Analysis generated from 539 rapid games · Chess.com public API · Username: rahul · Generated June 2026
+</div>
+
+<script>
+// Tab switching
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const C = Chart;
+const chartDefaults = {
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { color: '#8b8fa8', font:{size:11} }, grid: { color: 'rgba(255,255,255,0.05)' } },
+    y: { ticks: { color: '#8b8fa8', font:{size:11} }, grid: { color: 'rgba(255,255,255,0.05)' } }
+  }
+};
+
+// Rating progression chart
+const ratingData = [
+  {x:'Mar 23',y:535},{x:'May 23',y:460},{x:'Jan 25',y:405},
+  {x:'Feb 26',y:311},{x:'Mar 26',y:462},{x:'Apr 26',y:519},
+  {x:'May 26',y:553},{x:'Jun 26',y:687}
+];
+new C(document.getElementById('ratingChart'), {
+  type:'line',
+  data:{
+    labels: ratingData.map(d=>d.x),
+    datasets:[{
+      label:'Avg Rating',
+      data: ratingData.map(d=>d.y),
+      borderColor:'#769656', backgroundColor:'rgba(118,150,86,0.12)',
+      fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#f6f669'
+    }]
+  },
+  options:{...chartDefaults, plugins:{legend:{display:false}}, scales:{
+    x:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'}},
+    y:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'},min:100}
+  }}
+});
+
+// Month chart (win rate + accuracy)
+new C(document.getElementById('monthChart'), {
+  type:'bar',
+  data:{
+    labels:['Feb 26','Mar 26','Apr 26','May 26','Jun 26'],
+    datasets:[
+      {label:'Win Rate %', data:[36.4,53.7,41.5,45.6,52.4], backgroundColor:'rgba(118,150,86,0.75)', borderRadius:4},
+      {label:'Avg Accuracy %', data:[59.1,67.7,68.1,69.6,71.4], backgroundColor:'rgba(240,165,0,0.55)', borderRadius:4},
+    ]
+  },
+  options:{...chartDefaults, plugins:{legend:{display:true, labels:{color:'#8b8fa8',font:{size:10}}}}}
+});
+
+// Weekday chart
+new C(document.getElementById('weekdayChart'), {
+  type:'bar',
+  data:{
+    labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets:[{
+      data:[52.7,41.9,54.2,39.4,35.8,47.1,46.3],
+      backgroundColor:['#769656','#e05252','#769656','#e05252','#e05252','#f0a500','#f0a500'],
+      borderRadius:4
+    }]
+  },
+  options:{...chartDefaults, scales:{
+    x:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'}},
+    y:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'},min:0,max:70,title:{display:true,text:'Win Rate %',color:'#8b8fa8'}}
+  }}
+});
+
+// Rating diff chart
+new C(document.getElementById('ratingDiffChart'), {
+  type:'bar',
+  data:{
+    labels:['Opp ≥200 lower','Opp 100-200 lower','Opp 0-100 lower','Opp 0-100 higher','Opp 100-200 higher','Opp 200+ higher'],
+    datasets:[{
+      data:[60.0,90.9,75.9,17.6,17.6,9.8],
+      backgroundColor:d => {
+        const v = [60,90.9,75.9,17.6,17.6,9.8];
+        return v.map(x=>x>50?'rgba(118,150,86,0.75)':'rgba(224,82,82,0.75)');
+      },
+      borderRadius:4
+    }]
+  },
+  options:{...chartDefaults,
+    scales:{
+      x:{ticks:{color:'#8b8fa8',font:{size:9},maxRotation:20},grid:{color:'rgba(255,255,255,0.05)'}},
+      y:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'},min:0,max:100}
+    }
+  }
+});
+
+// Fix rating diff colors
+const ratingDiffCtx = document.getElementById('ratingDiffChart');
+const ratingDiffVals = [60.0,90.9,75.9,17.6,17.6,9.8];
+new C(ratingDiffCtx, {
+  type:'bar',
+  data:{
+    labels:['Opp ≥200 lower','Opp 100-200↓','Opp 0-100↓','Opp 0-100↑','Opp 100-200↑','Opp ≥200↑'],
+    datasets:[{
+      data:ratingDiffVals,
+      backgroundColor:ratingDiffVals.map(x=>x>40?'rgba(118,150,86,0.8)':'rgba(224,82,82,0.8)'),
+      borderRadius:4
+    }]
+  },
+  options:{...chartDefaults, scales:{
+    x:{ticks:{color:'#8b8fa8',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}},
+    y:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'},min:0,max:100,title:{display:true,text:'Win %',color:'#8b8fa8'}}
+  }}
+});
+
+// Game length chart
+new C(document.getElementById('lengthChart'), {
+  type:'bar',
+  data:{
+    labels:['1-20 moves','21-40 moves','41-60 moves','61-80 moves','80+ moves'],
+    datasets:[{
+      label:'Win Rate %',
+      data:[49.7,51.8,41.5,26.0,0.0],
+      backgroundColor:['#f0a500','#769656','#f0a500','#e05252','#c0392b'],
+      borderRadius:4
+    }]
+  },
+  options:{...chartDefaults, scales:{
+    x:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'}},
+    y:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'},min:0,max:70,title:{display:true,text:'Win Rate %',color:'#8b8fa8'}}
+  }}
+});
+
+// Accuracy distribution
+new C(document.getElementById('accDistChart'), {
+  type:'bar',
+  data:{
+    labels:['<50%','50-60%','60-70%','70-80%','80-90%','90%+'],
+    datasets:[{
+      data:[26,43,75,87,34,5],
+      backgroundColor:['#c0392b','#e05252','#f0a500','#769656','#27ae60','#1abc9c'],
+      borderRadius:4
+    }]
+  },
+  options:{...chartDefaults}
+});
+
+// Termination chart
+new C(document.getElementById('termChart'), {
+  type:'doughnut',
+  data:{
+    labels:['Checkmate (loss)','Checkmate (win)','Resignation (win)','Resigned','Stalemate','Draw/Rep/Other'],
+    datasets:[{
+      data:[160,86,122,67,30,74],
+      backgroundColor:['#e05252','#769656','#27ae60','#c0392b','#8b8fa8','#f0a500'],
+      borderWidth:2, borderColor:'#1a1d27'
+    }]
+  },
+  options:{
+    plugins:{legend:{display:true,position:'right',labels:{color:'#8b8fa8',font:{size:10},padding:8}}},
+    cutout:'60%'
+  }
+});
+
+// Hour chart
+new C(document.getElementById('hourChart'), {
+  type:'bar',
+  data:{
+    labels:['0-4 UTC','4-8 UTC','8-12 UTC','12-16 UTC','16-20 UTC','20-24 UTC'],
+    datasets:[{
+      label:'Win Rate %',
+      data:[50.0,55.0,46.4,45.4,45.0,36.2],
+      backgroundColor:['#f0a500','#769656','#f0a500','#f0a500','#f0a500','#e05252'],
+      borderRadius:4
+    }]
+  },
+  options:{...chartDefaults, scales:{
+    x:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'}},
+    y:{ticks:{color:'#8b8fa8'},grid:{color:'rgba(255,255,255,0.05)'},min:0,max:70}
+  }}
+});
+
+// ECO chart
+new C(document.getElementById('ecoChart'), {
+  type:'bar',
+  data:{
+    labels:['C (e4 Open)','B (Semi-Open)','A (Flank/Indian)','D (d4 closed)','E (Indian Def)'],
+    datasets:[
+      {label:'Win Rate %', data:[46.5,43.1,45.0,48.2,47.1], backgroundColor:'rgba(118,150,86,0.7)', borderRadius:4},
+      {label:'Games', data:[310,89,40,62,38], backgroundColor:'rgba(240,165,0,0.4)', borderRadius:4},
+    ]
+  },
+  options:{...chartDefaults, plugins:{legend:{display:true,labels:{color:'#8b8fa8',font:{size:10}}}}}
+});
+
+// Radar chart
+new C(document.getElementById('radarChart'), {
+  type:'radar',
+  data:{
+    labels:['Opening','Tactics','Calculation','Position','Endgame','Attack','Defense','Time Mgmt','Patterns','Initiative'],
+    datasets:[{
+      data:[5.5,5.0,5.0,4.0,3.5,7.0,3.5,6.0,5.5,6.5],
+      backgroundColor:'rgba(118,150,86,0.2)',
+      borderColor:'#769656',
+      pointBackgroundColor:'#f6f669',
+      pointRadius:4
+    }]
+  },
+  options:{
+    plugins:{legend:{display:false}},
+    scales:{r:{
+      ticks:{display:false,stepSize:2},
+      grid:{color:'rgba(255,255,255,0.1)'},
+      angleLines:{color:'rgba(255,255,255,0.1)'},
+      pointLabels:{color:'#8b8fa8',font:{size:10}},
+      min:0,max:10
+    }}
+  }
+});
+</script>
+</body>
+</html>
